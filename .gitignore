@@ -13,6 +13,11 @@ dist-ssr
 *.local
 .env
 
+# Signing keys & build packages
+*.keystore
+keystore/
+ShowCalorie - Google Play package/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

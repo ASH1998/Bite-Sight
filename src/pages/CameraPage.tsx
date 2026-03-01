@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Camera from '../components/Camera'
 import FoodResult from '../components/FoodResult'
 import Header from '../components/Header'
 import { analyzeFood } from '../services/gemini'
-import { addMeal } from '../services/database'
+import { addMeal, getSettings } from '../services/database'
 import { todayDateString, generateId } from '../utils/helpers'
 import type { NutritionInfo } from '../types'
 
 interface Props {
   onMealSaved: () => void
+  onNavigateSettings: () => void
 }
 
 type State =
@@ -17,13 +18,48 @@ type State =
   | { step: 'result'; imageData: string; name: string; nutrition: NutritionInfo }
   | { step: 'error'; message: string }
 
-export default function CameraPage({ onMealSaved }: Props) {
+export default function CameraPage({ onMealSaved, onNavigateSettings }: Props) {
   const [state, setState] = useState<State>({ step: 'camera' })
+  const [apiKey, setApiKey] = useState<string | null>(null)
+
+  useEffect(() => {
+    getSettings().then((s) => setApiKey(s.geminiApiKey || ''))
+  }, [])
+
+  // No API key - show setup prompt
+  if (apiKey !== null && !apiKey) {
+    return (
+      <div className="h-full flex flex-col">
+        <Header title="Snap Food" />
+        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center text-3xl">🔑</div>
+          <h2 className="text-lg font-semibold text-gray-900">API Key Required</h2>
+          <p className="text-sm text-gray-500">
+            To analyze food photos, you need a free Gemini API key from Google AI Studio.
+          </p>
+          <a
+            href="https://aistudio.google.com/apikey"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-blue-500 underline"
+          >
+            Get a free API key
+          </a>
+          <button
+            onClick={onNavigateSettings}
+            className="mt-2 px-6 py-2.5 bg-primary text-white rounded-full font-semibold text-sm active:bg-primary-dark transition-colors"
+          >
+            Go to Settings
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const handleCapture = async (imageData: string) => {
     setState({ step: 'analyzing', imageData })
     try {
-      const result = await analyzeFood(imageData)
+      const result = await analyzeFood(apiKey!, imageData)
       setState({ step: 'result', imageData, ...result })
     } catch (err) {
       console.error('[CameraPage] Analysis error:', err)

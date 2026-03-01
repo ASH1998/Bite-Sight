@@ -12,7 +12,7 @@ interface Props {
 
 export default function HomePage({ refreshKey }: Props) {
   const [meals, setMeals] = useState<Meal[]>([])
-  const [settings, setSettings] = useState<UserSettings>({ dailyCalorieGoal: 2000 })
+  const [settings, setSettings] = useState<UserSettings>({ dailyCalorieGoal: 2000, geminiApiKey: '' })
   const today = todayDateString()
 
   const load = useCallback(async () => {

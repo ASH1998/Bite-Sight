@@ -18,7 +18,7 @@ export default function App() {
     <div className="h-full flex flex-col">
       <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
         {tab === 'home' && <HomePage refreshKey={refreshKey} />}
-        {tab === 'camera' && <CameraPage onMealSaved={handleMealSaved} />}
+        {tab === 'camera' && <CameraPage onMealSaved={handleMealSaved} onNavigateSettings={() => setTab('settings')} />}
         {tab === 'history' && <HistoryPage />}
         {tab === 'settings' && <SettingsPage />}
       </div>

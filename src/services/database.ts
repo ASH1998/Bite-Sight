@@ -49,12 +49,17 @@ export async function getAllDates(): Promise<string[]> {
 export async function getSettings(): Promise<UserSettings> {
   const db = await getDb()
   const row = await db.get('settings', 'user')
-  return row?.value ?? { dailyCalorieGoal: 2000 }
+  return row?.value ?? { dailyCalorieGoal: 2000, geminiApiKey: '' }
 }
 
 export async function saveSettings(settings: UserSettings): Promise<void> {
   const db = await getDb()
   await db.put('settings', { key: 'user', value: settings })
+}
+
+export async function getAllMeals(): Promise<Meal[]> {
+  const db = await getDb()
+  return db.getAll('meals')
 }
 
 export async function clearAllData(): Promise<void> {

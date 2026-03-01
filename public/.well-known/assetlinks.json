@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.netlify.eloquent_gumption_7fd371.twa",
+        "sha256_cert_fingerprints": ["06:F7:BF:EF:9D:4C:23:E9:1A:BF:27:66:45:0A:C6:E5:AD:6A:FF:C8:52:34:88:51:EB:0F:74:EF:98:ED:F7:79"]
+      }
+    }]

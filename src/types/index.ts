@@ -29,4 +29,5 @@ export interface DaySummary {
 
 export interface UserSettings {
   dailyCalorieGoal: number
+  geminiApiKey: string
 }

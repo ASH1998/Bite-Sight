@@ -1,9 +1,7 @@
 import type { NutritionInfo } from '../types'
 
 // --- Configuration ---
-const API_KEY = import.meta.env.VITE_GEMINI_KEY as string
 const MODEL = 'gemini-3-flash-preview'
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${API_KEY}`
 const TEMPERATURE = 0
 const MAX_OUTPUT_TOKENS = 3000
 const THINKING_BUDGET = 0
@@ -27,7 +25,13 @@ interface GeminiResult {
 }
 
 // --- API ---
-export async function analyzeFood(imageBase64: string): Promise<GeminiResult> {
+export async function analyzeFood(apiKey: string, imageBase64: string): Promise<GeminiResult> {
+  if (!apiKey) {
+    throw new Error('No API key configured. Please add your Gemini API key in Settings.')
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`
+
   const base64Data = imageBase64.includes(',')
     ? imageBase64.split(',')[1]
     : imageBase64
@@ -54,7 +58,7 @@ export async function analyzeFood(imageBase64: string): Promise<GeminiResult> {
     },
   }
 
-  const response = await fetch(API_URL, {
+  const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -63,6 +67,9 @@ export async function analyzeFood(imageBase64: string): Promise<GeminiResult> {
   if (!response.ok) {
     const err = await response.text()
     console.error('[Gemini] API error:', response.status, err)
+    if (response.status === 400 || response.status === 403) {
+      throw new Error('Invalid API key. Please check your key in Settings.')
+    }
     throw new Error(`Gemini API error: ${response.status}`)
   }
 
