@@ -108,7 +108,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="text-center text-xs text-gray-400 mt-4">
-          <p>ShowCalorie v1.0</p>
+          <p>BiteSight v1.0</p>
           <p className="mt-1">Powered by Gemini AI</p>
         </div>
       </div>

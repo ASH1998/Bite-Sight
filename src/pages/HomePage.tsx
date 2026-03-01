@@ -32,7 +32,7 @@ export default function HomePage({ refreshKey }: Props) {
 
   return (
     <div className="pb-20">
-      <Header title="ShowCalorie" />
+      <Header title="BiteSight" />
       <div className="px-4">
         <p className="text-center text-sm text-gray-500 mt-3">{formatDate(today)}</p>
         <DailyProgress current={totalCalories} goal={settings.dailyCalorieGoal} />

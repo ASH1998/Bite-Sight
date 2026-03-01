@@ -11,8 +11,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon-192.png', 'icon-512.png'],
       manifest: {
-        name: 'ShowCalorie',
-        short_name: 'ShowCalorie',
+        name: 'BiteSight',
+        short_name: 'BiteSight',
         description: 'Snap food, track calories with AI',
         theme_color: '#ffffff',
         background_color: '#ffffff',

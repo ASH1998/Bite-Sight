@@ -1,4 +1,8 @@
-# ShowCalorie
+<div align="center">
+  <img src="static/bite-sight.png" alt="BiteSight Logo" width="800">
+</div>
+
+# BiteSight
 
 A PWA calorie tracker that uses your phone's camera and Google Gemini AI to estimate nutrition from food photos.
 

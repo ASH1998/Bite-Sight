@@ -1,7 +1,7 @@
 import { openDB, type IDBPDatabase } from 'idb'
 import type { Meal, UserSettings } from '../types'
 
-const DB_NAME = 'show-calorie-db'
+const DB_NAME = 'bite-sight-db'
 const DB_VERSION = 1
 
 let dbPromise: Promise<IDBPDatabase> | null = null
