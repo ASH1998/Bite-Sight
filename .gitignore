@@ -17,6 +17,7 @@ dist-ssr
 *.keystore
 keystore/
 ShowCalorie - Google Play package/
+BiteSight - Google Play package/
 
 # Editor directories and files
 .vscode/*
