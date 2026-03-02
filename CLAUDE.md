@@ -54,8 +54,8 @@ src/
 - **src/services/gemini.ts** - Gemini API configuration and food analysis logic
 - **src/services/database.ts** - IndexedDB schema and CRUD operations for meals
 - **vite.config.ts** - Build configuration with PWA manifest
-- **static/logo.png** - App logo (pie with fruits and "BITE-SIGHT" text)
-- **static/bite-sight.png** - Header image for README
+- **public/logo.png** - App logo (pie with fruits and "BITE-SIGHT" text) — served at `/logo.png` in production
+- **static/bite-sight.png** - Header image for README (git/docs only, not served by Vite)
 
 ## Development Workflow
 
@@ -75,7 +75,7 @@ src/
 - **Minimalist UI** - Clean, simple interface focused on quick meal logging
 - **Green color theme** - All charts, stats, and accents use a green palette (green-500 to green-700)
 - **Pure SVG charts** - No charting library; all graphs are hand-drawn SVG/CSS for zero extra dependencies
-- **Single logo file** - `static/logo.png` used for all icon sizes (favicon, apple-touch-icon, PWA manifest)
+- **Single logo file** - `public/logo.png` used for all icon sizes (favicon, apple-touch-icon, PWA manifest)
 
 ## History Page Architecture
 
@@ -97,13 +97,31 @@ Camera stream (`src/components/Camera.tsx`) uses a `cancelled` flag pattern to p
 - If `getUserMedia` resolves after unmount, the stream is immediately killed
 - Navigating away from the Snap tab unmounts `CameraPage` → unmounts `Camera` → cleanup runs
 
+## Important: Static Assets
+
+Vite only serves files from `public/` to the production `dist/` build. The `static/` directory is for git/README assets only — it is NOT copied to dist.
+
+- Put production assets (icons, logos) in `public/` → served at root (`/logo.png`)
+- Put repo-only assets (README images) in `static/` → not in dist
+- The workbox config has `maximumFileSizeToCacheInBytes: 10MB` to accommodate the ~8MB logo
+
+## Versioning
+
+- Use **patch bumps** (v1.1.1, v1.1.2) for fixes rather than deleting/moving tags
+- Tags should be immutable once pushed — increment version instead of force-replacing
+- CHANGELOG.md tracks all releases
+
 ## Recent Changes
 
 - Rebranded from "ShowCalorie" to "BiteSight"
-- Replaced icon-192/icon-512 with single `static/logo.png` for all app icons
+- Moved logo from `static/` to `public/` so Vite copies it to dist (was 404ing in production)
+- Replaced icon-192/icon-512 with single `public/logo.png` for all app icons
 - Fixed camera stream leak — stream now properly stops when navigating away from Snap tab
 - Added date range selector (1W/2W/1M/3M/6M/1Y/All) to History page with smart aggregation
 - Green color theme applied to all charts (donut, bar chart, macro tiles, weekly averages)
 - Added per-macro mini bar tile charts (Protein, Carbs, Fat) in a 3-column grid
+- Service worker hardened: cleanupOutdatedCaches, skipWaiting, clientsClaim, 10MB cache limit
+- IndexedDB versioned migration pattern (`oldVersion < N`) for safe future schema changes
+- Data persists across app updates — only static assets are replaced, IndexedDB is untouched
 - Added user API key management in settings
 - Set up Netlify deployment and PWA support
