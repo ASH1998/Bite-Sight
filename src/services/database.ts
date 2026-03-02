@@ -9,14 +9,15 @@ let dbPromise: Promise<IDBPDatabase> | null = null
 function getDb() {
   if (!dbPromise) {
     dbPromise = openDB(DB_NAME, DB_VERSION, {
-      upgrade(db) {
-        if (!db.objectStoreNames.contains('meals')) {
+      upgrade(db, oldVersion) {
+        // v1: initial schema
+        if (oldVersion < 1) {
           const store = db.createObjectStore('meals', { keyPath: 'id' })
           store.createIndex('date', 'date', { unique: false })
-        }
-        if (!db.objectStoreNames.contains('settings')) {
           db.createObjectStore('settings', { keyPath: 'key' })
         }
+        // Future migrations go here:
+        // if (oldVersion < 2) { ... }
       },
     })
   }
