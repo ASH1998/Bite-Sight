@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from 'react'
+import { useRef, useState, useEffect } from 'react'
 
 interface Props {
   onCapture: (imageDataUrl: string) => void
@@ -9,33 +9,48 @@ export default function Camera({ onCapture }: Props) {
   const streamRef = useRef<MediaStream | null>(null)
   const [error, setError] = useState<string | null>(null)
 
-  const stopStream = useCallback(() => {
+  const stopStream = () => {
     streamRef.current?.getTracks().forEach((t) => t.stop())
     streamRef.current = null
-  }, [])
-
-  const startCamera = useCallback(async () => {
-    stopStream()
-    try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } },
-      })
-      streamRef.current = mediaStream
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream
-      }
-      setError(null)
-    } catch {
-      setError('Camera access denied. Please allow camera permissions.')
+    if (videoRef.current) {
+      videoRef.current.srcObject = null
     }
-  }, [stopStream])
+  }
 
   useEffect(() => {
-    startCamera()
-    return () => stopStream()
-  }, [startCamera, stopStream])
+    let cancelled = false
 
-  const capture = useCallback(() => {
+    const start = async () => {
+      stopStream()
+      try {
+        const mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } },
+        })
+        if (cancelled) {
+          mediaStream.getTracks().forEach((t) => t.stop())
+          return
+        }
+        streamRef.current = mediaStream
+        if (videoRef.current) {
+          videoRef.current.srcObject = mediaStream
+        }
+        setError(null)
+      } catch {
+        if (!cancelled) {
+          setError('Camera access denied. Please allow camera permissions.')
+        }
+      }
+    }
+
+    start()
+
+    return () => {
+      cancelled = true
+      stopStream()
+    }
+  }, [])
+
+  const capture = () => {
     const video = videoRef.current
     if (!video) return
 
@@ -48,14 +63,29 @@ export default function Camera({ onCapture }: Props) {
     const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
     stopStream()
     onCapture(dataUrl)
-  }, [stopStream, onCapture])
+  }
+
+  const retry = () => {
+    stopStream()
+    setError(null)
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } },
+    }).then((mediaStream) => {
+      streamRef.current = mediaStream
+      if (videoRef.current) {
+        videoRef.current.srcObject = mediaStream
+      }
+    }).catch(() => {
+      setError('Camera access denied. Please allow camera permissions.')
+    })
+  }
 
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4 px-6 text-center">
         <p className="text-gray-600">{error}</p>
         <button
-          onClick={startCamera}
+          onClick={retry}
           className="px-4 py-2 bg-primary text-white rounded-full font-medium text-sm"
         >
           Retry

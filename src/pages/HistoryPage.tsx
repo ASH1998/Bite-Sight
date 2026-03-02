@@ -14,10 +14,31 @@ interface DayData {
   fat: number
 }
 
+interface BarData {
+  label: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+}
+
+type RangeKey = '1W' | '2W' | '1M' | '3M' | '6M' | '1Y' | 'ALL'
+
+const RANGES: { key: RangeKey; label: string; days: number }[] = [
+  { key: '1W', label: '1W', days: 7 },
+  { key: '2W', label: '2W', days: 14 },
+  { key: '1M', label: '1M', days: 30 },
+  { key: '3M', label: '3M', days: 90 },
+  { key: '6M', label: '6M', days: 180 },
+  { key: '1Y', label: '1Y', days: 365 },
+  { key: 'ALL', label: 'All', days: Infinity },
+]
+
 export default function HistoryPage() {
   const [allMeals, setAllMeals] = useState<Meal[]>([])
   const [goal, setGoal] = useState(2000)
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [range, setRange] = useState<RangeKey>('1W')
 
   const load = async () => {
     const [meals, settings] = await Promise.all([getAllMeals(), getSettings()])
@@ -26,6 +47,8 @@ export default function HistoryPage() {
   }
 
   useEffect(() => { load() }, [])
+
+  const rangeDays = RANGES.find((r) => r.key === range)!.days
 
   // Group meals by date
   const days: DayData[] = useMemo(() => {
@@ -47,48 +70,105 @@ export default function HistoryPage() {
       }))
   }, [allMeals])
 
-  // Last 7 days for the bar chart (most recent on right)
-  const chartDays = useMemo(() => {
-    const last7: DayData[] = []
+  // Get date range boundaries
+  const { startDate, dayCount } = useMemo(() => {
     const today = new Date()
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today)
-      d.setDate(d.getDate() - i)
+    if (range === 'ALL' && days.length > 0) {
+      const earliest = days[days.length - 1].date
+      const start = new Date(earliest + 'T12:00:00')
+      const diff = Math.ceil((today.getTime() - start.getTime()) / 86400000) + 1
+      return { startDate: start, dayCount: diff }
+    }
+    const start = new Date(today)
+    start.setDate(start.getDate() - (rangeDays - 1))
+    return { startDate: start, dayCount: rangeDays }
+  }, [range, rangeDays, days])
+
+  // Build all daily data for the range
+  const rangeDayData = useMemo(() => {
+    const result: DayData[] = []
+    const today = new Date()
+    for (let i = 0; i < dayCount; i++) {
+      const d = new Date(startDate)
+      d.setDate(d.getDate() + i)
+      if (d > today) break
       const dateStr = d.toISOString().split('T')[0]
       const existing = days.find((dd) => dd.date === dateStr)
-      last7.push(existing ?? { date: dateStr, meals: [], calories: 0, protein: 0, carbs: 0, fat: 0 })
+      result.push(existing ?? { date: dateStr, meals: [], calories: 0, protein: 0, carbs: 0, fat: 0 })
     }
-    return last7
-  }, [days])
+    return result
+  }, [startDate, dayCount, days])
 
-  const chartMax = Math.max(goal, ...chartDays.map((d) => d.calories), 1)
+  // Aggregate into bars based on range
+  const chartBars: BarData[] = useMemo(() => {
+    if (rangeDayData.length === 0) return []
 
-  // Weekly averages
-  const weekAvg = useMemo(() => {
-    const daysWithData = chartDays.filter((d) => d.calories > 0)
-    if (daysWithData.length === 0) return { calories: 0, protein: 0, carbs: 0, fat: 0 }
-    const n = daysWithData.length
+    // Daily bars for short ranges
+    if (rangeDays <= 31) {
+      return rangeDayData.map((d) => ({
+        label: barLabel(d.date, range),
+        calories: d.calories,
+        protein: d.protein,
+        carbs: d.carbs,
+        fat: d.fat,
+      }))
+    }
+
+    // Weekly aggregation for 3M/6M
+    if (rangeDays <= 180) {
+      return aggregateByWeek(rangeDayData)
+    }
+
+    // Monthly aggregation for 1Y/ALL
+    return aggregateByMonth(rangeDayData)
+  }, [rangeDayData, rangeDays, range])
+
+  const chartMax = Math.max(goal, ...chartBars.map((d) => d.calories), 1)
+
+  // Period averages
+  const periodAvg = useMemo(() => {
+    const withData = rangeDayData.filter((d) => d.calories > 0)
+    if (withData.length === 0) return { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    const n = withData.length
     return {
-      calories: Math.round(daysWithData.reduce((s, d) => s + d.calories, 0) / n),
-      protein: Math.round(daysWithData.reduce((s, d) => s + d.protein, 0) / n),
-      carbs: Math.round(daysWithData.reduce((s, d) => s + d.carbs, 0) / n),
-      fat: Math.round(daysWithData.reduce((s, d) => s + d.fat, 0) / n),
+      calories: Math.round(withData.reduce((s, d) => s + d.calories, 0) / n),
+      protein: Math.round(withData.reduce((s, d) => s + d.protein, 0) / n),
+      carbs: Math.round(withData.reduce((s, d) => s + d.carbs, 0) / n),
+      fat: Math.round(withData.reduce((s, d) => s + d.fat, 0) / n),
     }
-  }, [chartDays])
+  }, [rangeDayData])
+
+  // Filter daily log to range
+  const filteredDays = useMemo(() => {
+    const startStr = startDate.toISOString().split('T')[0]
+    return days.filter((d) => d.date >= startStr)
+  }, [days, startDate])
 
   const handleDelete = async (id: string) => {
     await deleteMeal(id)
     load()
   }
 
-  const dayLabel = (dateStr: string) => {
-    const d = new Date(dateStr + 'T12:00:00')
-    return d.toLocaleDateString('en-US', { weekday: 'short' })
-  }
-
   return (
     <div className="pb-20">
       <Header title="History" />
+
+      {/* Range selector */}
+      <div className="px-4 pt-3 pb-1 flex gap-1.5 overflow-x-auto no-scrollbar">
+        {RANGES.map((r) => (
+          <button
+            key={r.key}
+            onClick={() => setRange(r.key)}
+            className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors shrink-0 ${
+              range === r.key
+                ? 'bg-green-500 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-500'
+            }`}
+          >
+            {r.label}
+          </button>
+        ))}
+      </div>
 
       {days.length === 0 ? (
         <div className="text-center py-16 text-gray-400">
@@ -99,69 +179,78 @@ export default function HistoryPage() {
       ) : (
         <div className="px-4 py-4 flex flex-col gap-4">
 
-          {/* Weekly Bar Chart */}
+          {/* Calorie Bar Chart */}
           <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Last 7 Days</h3>
-            <div className="flex items-end justify-between gap-1.5 h-32 mb-2 relative">
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Calories</h3>
+            <div className="flex items-end justify-between gap-[2px] h-32 mb-2 relative">
               {/* Goal line */}
-              <div
-                className="absolute left-0 right-0 border-t border-dashed border-gray-300"
-                style={{ bottom: `${(goal / chartMax) * 100}%` }}
-              >
-                <span className="absolute -top-4 right-0 text-[10px] text-gray-400">{goal}</span>
-              </div>
-              {chartDays.map((day) => {
-                const pct = (day.calories / chartMax) * 100
-                const overGoal = day.calories > goal
+              {rangeDays <= 31 && (
+                <div
+                  className="absolute left-0 right-0 border-t border-dashed border-gray-300 z-10"
+                  style={{ bottom: `${(goal / chartMax) * 100}%` }}
+                >
+                  <span className="absolute -top-4 right-0 text-[10px] text-gray-400">{goal}</span>
+                </div>
+              )}
+              {chartBars.map((bar, i) => {
+                const pct = (bar.calories / chartMax) * 100
+                const overGoal = bar.calories > goal
                 return (
-                  <div key={day.date} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-                    {day.calories > 0 && (
-                      <span className="text-[10px] font-medium text-gray-500">{day.calories}</span>
+                  <div key={i} className="flex-1 flex flex-col items-center gap-0.5 h-full justify-end min-w-0">
+                    {bar.calories > 0 && chartBars.length <= 14 && (
+                      <span className="text-[8px] font-medium text-gray-500 truncate">{bar.calories}</span>
                     )}
                     <div
-                      className={`w-full max-w-8 rounded-lg transition-all duration-500 ${
+                      className={`w-full rounded-sm transition-all duration-500 ${
                         overGoal
                           ? 'bg-gradient-to-t from-red-400 to-red-300'
-                          : day.calories > 0
+                          : bar.calories > 0
                             ? 'bg-gradient-to-t from-green-500 to-green-400'
                             : 'bg-gray-100'
                       }`}
-                      style={{ height: `${Math.max(pct, day.calories > 0 ? 8 : 3)}%` }}
+                      style={{ height: `${Math.max(pct, bar.calories > 0 ? 8 : 3)}%` }}
                     />
                   </div>
                 )
               })}
             </div>
-            <div className="flex justify-between gap-1.5">
-              {chartDays.map((day) => (
-                <span key={day.date} className="flex-1 text-center text-[10px] text-gray-400">
-                  {dayLabel(day.date)}
+            <div className="flex justify-between gap-[2px]">
+              {chartBars.map((bar, i) => (
+                <span key={i} className="flex-1 text-center text-[8px] text-gray-400 truncate min-w-0">
+                  {chartBars.length <= 31 ? bar.label : (i % Math.ceil(chartBars.length / 8) === 0 ? bar.label : '')}
                 </span>
               ))}
             </div>
           </div>
 
-          {/* Weekly Averages */}
+          {/* Period Averages */}
           <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4">
-            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Weekly Average</h3>
+            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Average / Day</h3>
             <div className="grid grid-cols-4 gap-2 text-center">
-              <StatBubble label="Calories" value={`${weekAvg.calories}`} unit="kcal" color="text-primary" />
-              <StatBubble label="Protein" value={`${weekAvg.protein}`} unit="g" color="text-blue-500" />
-              <StatBubble label="Carbs" value={`${weekAvg.carbs}`} unit="g" color="text-orange-500" />
-              <StatBubble label="Fat" value={`${weekAvg.fat}`} unit="g" color="text-yellow-500" />
+              <StatBubble label="Calories" value={`${periodAvg.calories}`} unit="kcal" color="text-green-500" />
+              <StatBubble label="Protein" value={`${periodAvg.protein}`} unit="g" color="text-green-500" />
+              <StatBubble label="Carbs" value={`${periodAvg.carbs}`} unit="g" color="text-green-600" />
+              <StatBubble label="Fat" value={`${periodAvg.fat}`} unit="g" color="text-green-700" />
             </div>
           </div>
 
-          {/* Macro split donut for the week */}
+          {/* Macro split donut */}
           <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4">
             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Macro Split (Avg)</h3>
-            <MacroDonut protein={weekAvg.protein} carbs={weekAvg.carbs} fat={weekAvg.fat} />
+            <MacroDonut protein={periodAvg.protein} carbs={periodAvg.carbs} fat={periodAvg.fat} />
+          </div>
+
+          {/* Individual macro bar tiles */}
+          <div className="grid grid-cols-3 gap-2">
+            <MacroTile label="Protein" bars={chartBars} dataKey="protein" color="#22c55e" avg={periodAvg.protein} />
+            <MacroTile label="Carbs" bars={chartBars} dataKey="carbs" color="#16a34a" avg={periodAvg.carbs} />
+            <MacroTile label="Fat" bars={chartBars} dataKey="fat" color="#15803d" avg={periodAvg.fat} />
           </div>
 
           {/* Day-by-day list */}
           <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mt-2">Daily Log</h3>
           <div className="flex flex-col gap-3">
-            {days.map((day) => {
+            {filteredDays.map((day) => {
               const pct = Math.min(day.calories / goal, 1)
               const overGoal = day.calories > goal
               const isOpen = expanded === day.date
@@ -214,12 +303,82 @@ export default function HistoryPage() {
                 </div>
               )
             })}
+            {filteredDays.length === 0 && (
+              <p className="text-center text-sm text-gray-400 py-6">No meals in this period</p>
+            )}
           </div>
         </div>
       )}
     </div>
   )
 }
+
+// --- Helper functions ---
+
+function barLabel(dateStr: string, range: RangeKey): string {
+  const d = new Date(dateStr + 'T12:00:00')
+  if (range === '1W') {
+    return d.toLocaleDateString('en-US', { weekday: 'short' })
+  }
+  if (range === '2W') {
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  }
+  // 1M
+  return `${d.getDate()}`
+}
+
+function aggregateByWeek(days: DayData[]): BarData[] {
+  const buckets = new Map<string, DayData[]>()
+  for (const d of days) {
+    const date = new Date(d.date + 'T12:00:00')
+    // Week starts on Monday
+    const day = date.getDay()
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1)
+    const monday = new Date(date)
+    monday.setDate(diff)
+    const key = monday.toISOString().split('T')[0]
+    const arr = buckets.get(key) ?? []
+    arr.push(d)
+    buckets.set(key, arr)
+  }
+  return [...buckets.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([weekStart, days]) => {
+      const d = new Date(weekStart + 'T12:00:00')
+      return {
+        label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        calories: days.reduce((s, d) => s + d.calories, 0),
+        protein: days.reduce((s, d) => s + d.protein, 0),
+        carbs: days.reduce((s, d) => s + d.carbs, 0),
+        fat: days.reduce((s, d) => s + d.fat, 0),
+      }
+    })
+}
+
+function aggregateByMonth(days: DayData[]): BarData[] {
+  const buckets = new Map<string, DayData[]>()
+  for (const d of days) {
+    const key = d.date.slice(0, 7) // YYYY-MM
+    const arr = buckets.get(key) ?? []
+    arr.push(d)
+    buckets.set(key, arr)
+  }
+  return [...buckets.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([monthKey, days]) => {
+      const [y, m] = monthKey.split('-')
+      const d = new Date(Number(y), Number(m) - 1, 1)
+      return {
+        label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+        calories: days.reduce((s, d) => s + d.calories, 0),
+        protein: days.reduce((s, d) => s + d.protein, 0),
+        carbs: days.reduce((s, d) => s + d.carbs, 0),
+        fat: days.reduce((s, d) => s + d.fat, 0),
+      }
+    })
+}
+
+// --- Sub-components ---
 
 function StatBubble({ label, value, unit, color }: { label: string; value: string; unit: string; color: string }) {
   return (
@@ -240,7 +399,6 @@ function MacroDonut({ protein, carbs, fat }: { protein: number; carbs: number; f
   const cPct = Math.round((carbs / total) * 100)
   const fPct = 100 - pPct - cPct
 
-  // SVG donut segments
   const r = 40
   const circumference = 2 * Math.PI * r
   const pLen = (pPct / 100) * circumference
@@ -251,21 +409,18 @@ function MacroDonut({ protein, carbs, fat }: { protein: number; carbs: number; f
     <div className="flex items-center justify-center gap-6">
       <div className="relative w-24 h-24">
         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-          {/* Protein - blue */}
-          <circle cx="50" cy="50" r={r} fill="none" stroke="#3b82f6" strokeWidth="10"
+          <circle cx="50" cy="50" r={r} fill="none" stroke="#22c55e" strokeWidth="10"
             strokeDasharray={`${pLen} ${circumference - pLen}`} strokeDashoffset="0" />
-          {/* Carbs - orange */}
-          <circle cx="50" cy="50" r={r} fill="none" stroke="#f97316" strokeWidth="10"
+          <circle cx="50" cy="50" r={r} fill="none" stroke="#16a34a" strokeWidth="10"
             strokeDasharray={`${cLen} ${circumference - cLen}`} strokeDashoffset={`${-pLen}`} />
-          {/* Fat - yellow */}
-          <circle cx="50" cy="50" r={r} fill="none" stroke="#eab308" strokeWidth="10"
+          <circle cx="50" cy="50" r={r} fill="none" stroke="#15803d" strokeWidth="10"
             strokeDasharray={`${fLen} ${circumference - fLen}`} strokeDashoffset={`${-(pLen + cLen)}`} />
         </svg>
       </div>
       <div className="flex flex-col gap-2">
-        <LegendRow color="bg-blue-500" label="Protein" pct={pPct} />
-        <LegendRow color="bg-orange-500" label="Carbs" pct={cPct} />
-        <LegendRow color="bg-yellow-500" label="Fat" pct={fPct} />
+        <LegendRow color="bg-green-500" label="Protein" pct={pPct} />
+        <LegendRow color="bg-green-600" label="Carbs" pct={cPct} />
+        <LegendRow color="bg-green-700" label="Fat" pct={fPct} />
       </div>
     </div>
   )
@@ -277,6 +432,36 @@ function LegendRow({ color, label, pct }: { color: string; label: string; pct: n
       <div className={`w-2.5 h-2.5 rounded-full ${color}`} />
       <span className="text-xs text-gray-600">{label}</span>
       <span className="text-xs font-semibold text-gray-900">{pct}%</span>
+    </div>
+  )
+}
+
+function MacroTile({ label, bars, dataKey, color, avg }: {
+  label: string; bars: BarData[]; dataKey: 'protein' | 'carbs' | 'fat'
+  color: string; avg: number
+}) {
+  const values = bars.map((b) => b[dataKey])
+  const maxVal = Math.max(...values, 1)
+
+  return (
+    <div className="bg-card rounded-xl shadow-sm border border-gray-100 p-3">
+      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide">{label}</p>
+      <p className="text-base font-bold mt-0.5" style={{ color }}>
+        {avg}<span className="text-[9px] font-normal text-gray-400">g</span>
+      </p>
+      <div className="flex items-end gap-[2px] mt-2 h-10">
+        {values.map((v, i) => (
+          <div
+            key={i}
+            className="flex-1 rounded-sm transition-all duration-300"
+            style={{
+              height: `${Math.max((v / maxVal) * 100, v > 0 ? 8 : 3)}%`,
+              backgroundColor: v > 0 ? color : '#f3f4f6',
+              opacity: v > 0 ? 0.35 + 0.65 * (v / maxVal) : 1,
+            }}
+          />
+        ))}
+      </div>
     </div>
   )
 }

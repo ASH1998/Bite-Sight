@@ -1,5 +1,26 @@
 # Changelog
 
+## v1.1.0 (2026-03-02)
+
+### Added
+- Date range selector on History page (1W, 2W, 1M, 3M, 6M, 1Y, All)
+- Smart chart aggregation — daily bars for short ranges, weekly for 3M/6M, monthly for 1Y/All
+- Per-macro mini bar tiles (Protein, Carbs, Fat) in a 3-column grid
+- Green color theme across all charts, stats, donut, and macro tiles
+- CLAUDE.md project context file
+
+### Fixed
+- Camera stream leak — camera now stops when navigating away from Snap tab
+- Video srcObject explicitly nulled on unmount to release hardware indicator
+
+### Changed
+- App icon uses single `static/logo.png` instead of separate icon-192/icon-512
+- "Weekly Average" → "Average / Day", computed over selected range
+- Daily Log filtered to selected date range
+- Donut and legend colors updated to green palette
+- Service worker: added cleanupOutdatedCaches, skipWaiting, clientsClaim
+- IndexedDB upgrade handler uses versioned migrations for safer future schema changes
+
 ## v1.0.0 (2026-03-01)
 
 ### Features
