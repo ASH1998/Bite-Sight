@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.2.0 (2026-03-04)
+
+### Added
+- Image upload support on Snap tab — pick photos from gallery instead of only camera capture
+- Optional text description input — tell the AI what you're eating for better accuracy
+- Gemini API now receives user description alongside the image for improved food identification
+
+### Changed
+- Snap tab controls redesigned — text input and action buttons in a unified dark bar above bottom navigation
+- Upload and capture buttons side by side for quick access
+
 ## v1.1.0 (2026-03-02)
 
 ### Added
