@@ -6,7 +6,7 @@ BiteSight is a Progressive Web App (PWA) calorie tracker that uses AI to analyze
 
 ## Core Features
 
-- **AI Food Analysis** - Uses Google Gemini API (gemini-3-flash-preview) to analyze food photos and estimate nutrition
+- **AI Food Analysis** - Uses Google Gemini API (gemini-3-flash-preview) to analyze food photos (camera or uploaded) with optional text descriptions
 - **Daily Tracking** - Circular progress ring showing calories consumed vs daily goal
 - **Detailed Nutrition** - Tracks calories, protein, carbs, fat, fiber, sugar, sodium, and serving sizes
 - **Meal History** - Browse past meals with expandable day view, daily summaries, and date range filtering
@@ -29,7 +29,7 @@ BiteSight is a Progressive Web App (PWA) calorie tracker that uses AI to analyze
 ```
 src/
 ├── components/          # Reusable UI components
-│   ├── Camera.tsx       # Camera interface for food photos
+│   ├── Camera.tsx       # Camera capture + image upload + text description
 │   ├── MealCard.tsx     # Individual meal display
 │   ├── DailyProgress.tsx # Circular calorie progress ring
 │   ├── FoodResult.tsx   # AI analysis results display
@@ -89,13 +89,19 @@ The history page (`src/pages/HistoryPage.tsx`) is the most complex screen:
 - **Macro tiles** - 3-column grid of mini bar charts per macro, each with its own green shade
 - **Daily log** - Expandable day cards filtered to selected range
 
-## Camera Lifecycle
+## Camera / Snap Tab
 
 Camera stream (`src/components/Camera.tsx`) uses a `cancelled` flag pattern to prevent stream leaks:
 - On mount: requests `getUserMedia`, stores stream in ref
 - On unmount: sets `cancelled = true`, stops all tracks, nulls `srcObject`
 - If `getUserMedia` resolves after unmount, the stream is immediately killed
 - Navigating away from the Snap tab unmounts `CameraPage` → unmounts `Camera` → cleanup runs
+
+Input methods on the Snap tab:
+- **Camera capture** — live viewfinder with shutter button
+- **Image upload** — file picker (`<input type="file" accept="image/*">`) for gallery photos
+- **Text description** — optional text input sent alongside the image to Gemini for better accuracy
+- `analyzeFood(apiKey, imageBase64, description?)` in `gemini.ts` appends description as a separate text part
 
 ## Important: Static Assets
 
@@ -125,3 +131,5 @@ Vite only serves files from `public/` to the production `dist/` build. The `stat
 - Data persists across app updates — only static assets are replaced, IndexedDB is untouched
 - Added user API key management in settings
 - Set up Netlify deployment and PWA support
+- Added image upload and optional text description on Snap tab (v1.2.0)
+- Gemini API accepts optional user description for improved food identification

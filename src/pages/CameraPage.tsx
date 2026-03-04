@@ -14,7 +14,7 @@ interface Props {
 
 type State =
   | { step: 'camera' }
-  | { step: 'analyzing'; imageData: string }
+  | { step: 'analyzing'; imageData: string; description?: string }
   | { step: 'result'; imageData: string; name: string; nutrition: NutritionInfo }
   | { step: 'error'; message: string }
 
@@ -56,10 +56,10 @@ export default function CameraPage({ onMealSaved, onNavigateSettings }: Props) {
     )
   }
 
-  const handleCapture = async (imageData: string) => {
-    setState({ step: 'analyzing', imageData })
+  const handleCapture = async (imageData: string, description?: string) => {
+    setState({ step: 'analyzing', imageData, description })
     try {
-      const result = await analyzeFood(apiKey!, imageData)
+      const result = await analyzeFood(apiKey!, imageData, description)
       setState({ step: 'result', imageData, ...result })
     } catch (err) {
       console.error('[CameraPage] Analysis error:', err)
