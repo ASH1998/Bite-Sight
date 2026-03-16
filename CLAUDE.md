@@ -12,6 +12,8 @@ BiteSight is a Progressive Web App (PWA) calorie tracker that uses AI to analyze
 - **Meal History** - Browse past meals with expandable day view, daily summaries, and date range filtering
 - **History Charts** - Calorie bar chart, macro donut, and per-macro mini bar tiles with smart aggregation across date ranges
 - **Customizable Goals** - Users can set daily calorie targets (1000-5000 kcal)
+- **Body & BMI Tracker** - Log daily weight (kg/lb), view BMI on a color-coded zone bar, track progress toward a goal weight with a line chart and recommendations
+- **Daily Calorie Plan** - Set a target date; app calculates kcal/day needed with Moderate/Fast pace presets and safety warnings
 - **PWA Support** - Installable on Android with offline support via service workers
 - **Local Storage** - All meal data stored locally in IndexedDB for privacy and offline access
 
@@ -38,8 +40,9 @@ src/
 ├── pages/              # App screens/routes
 │   ├── HomePage.tsx     # Main dashboard
 │   ├── CameraPage.tsx   # Food photo capture
+│   ├── BodyPage.tsx     # Weight logging, BMI, goal progress, chart, recommendations
 │   ├── HistoryPage.tsx  # Past meals view
-│   └── SettingsPage.tsx # User preferences
+│   └── SettingsPage.tsx # User preferences + calorie plan
 ├── services/
 │   ├── gemini.ts       # Gemini API integration
 │   └── database.ts     # IndexedDB operations
@@ -52,8 +55,10 @@ src/
 ## Key Files
 
 - **src/services/gemini.ts** - Gemini API configuration and food analysis logic
-- **src/services/database.ts** - IndexedDB schema and CRUD operations for meals
-- **vite.config.ts** - Build configuration with PWA manifest
+- **src/services/database.ts** - IndexedDB schema (v2) and CRUD operations for meals + weight entries
+- **src/pages/BodyPage.tsx** - Weight tracking, BMI bar, goal chart, recommendations
+- **src/vite-env.d.ts** - Declares `__APP_VERSION__` global injected by vite.config.ts
+- **vite.config.ts** - Build config with PWA manifest; injects `__APP_VERSION__` from package.json
 - **public/logo.png** - App logo (pie with fruits and "BITE-SIGHT" text) — served at `/logo.png` in production
 - **static/bite-sight.png** - Header image for README (git/docs only, not served by Vite)
 
@@ -74,8 +79,10 @@ src/
 - **PWA-first** - Designed for mobile installation and offline use
 - **Minimalist UI** - Clean, simple interface focused on quick meal logging
 - **Green color theme** - All charts, stats, and accents use a green palette (green-500 to green-700)
-- **Pure SVG charts** - No charting library; all graphs are hand-drawn SVG/CSS for zero extra dependencies
+- **Pure SVG/HTML charts** - No charting library; all graphs are hand-drawn SVG or CSS for zero extra dependencies
 - **Single logo file** - `public/logo.png` used for all icon sizes (favicon, apple-touch-icon, PWA manifest)
+- **Responsive charts via ResizeObserver** - Weight history chart measures its container in JS and recalculates SVG coordinates; text stays fixed-size. BMI zone bar uses HTML/CSS divs (not SVG) so font size never scales with the container
+- **TDEE approximation** - Body tab estimates maintenance calories as `weight_kg × 33` (light activity). No age/sex required
 
 ## History Page Architecture
 
@@ -111,25 +118,32 @@ Vite only serves files from `public/` to the production `dist/` build. The `stat
 - Put repo-only assets (README images) in `static/` → not in dist
 - The workbox config has `maximumFileSizeToCacheInBytes: 10MB` to accommodate the ~8MB logo
 
-## Versioning
+## Body Page Architecture
+
+`src/pages/BodyPage.tsx` — key patterns:
+
+- **Weight entries** stored in `weightEntries` IndexedDB store (added in DB v2 migration); always saved in kg, converted for display
+- **BMI zone bar** — HTML/CSS divs with hard-stop gradient at 14% (18.5), 40% (25), 60% (30) of the 15–40 range; current position shown as a CSS triangle below the bar; avoids SVG so text doesn't scale
+- **Weight chart** — SVG with `width={chartWidth}` (no viewBox); `ResizeObserver` on the wrapper div updates `chartWidth` state, which re-triggers `useMemo` to recompute all coordinates in real pixels
+- **Calorie plan** — lives in SettingsPage, not BodyPage; reads latest weight entry + settings to compute plan live as user edits inputs
+- **Recommendations** — computed in `useMemo` from BMI category, goal weight diff, 7-day avg calories, and recent weight trend (slope of last 5 entries)
+
+## Versioning & Git Workflow
 
 - Use **patch bumps** (v1.1.1, v1.1.2) for fixes rather than deleting/moving tags
 - Tags should be immutable once pushed — increment version instead of force-replacing
 - CHANGELOG.md tracks all releases
+- **Commit by feature** — one logical change per commit; do not bulk-stage unrelated files together
+- Work on feature branches; push branch, open PR to merge into `main`
+- `__APP_VERSION__` is read from `package.json` at build time via `vite.config.ts` and displayed in the Settings footer
 
-## Recent Changes
+## Recent Changes (v1.3.0)
 
-- Rebranded from "ShowCalorie" to "BiteSight"
-- Moved logo from `static/` to `public/` so Vite copies it to dist (was 404ing in production)
-- Replaced icon-192/icon-512 with single `public/logo.png` for all app icons
-- Fixed camera stream leak — stream now properly stops when navigating away from Snap tab
-- Added date range selector (1W/2W/1M/3M/6M/1Y/All) to History page with smart aggregation
-- Green color theme applied to all charts (donut, bar chart, macro tiles, weekly averages)
-- Added per-macro mini bar tile charts (Protein, Carbs, Fat) in a 3-column grid
-- Service worker hardened: cleanupOutdatedCaches, skipWaiting, clientsClaim, 10MB cache limit
-- IndexedDB versioned migration pattern (`oldVersion < N`) for safe future schema changes
-- Data persists across app updates — only static assets are replaced, IndexedDB is untouched
-- Added user API key management in settings
-- Set up Netlify deployment and PWA support
-- Added image upload and optional text description on Snap tab (v1.2.0)
-- Gemini API accepts optional user description for improved food identification
+- Added Body & BMI tab with weight logging, BMI zone bar, goal progress, history chart, and recommendations
+- Added Daily Calorie Plan to Settings (TDEE estimate, pace presets, target-date calculator)
+- IndexedDB bumped to v2 — `weightEntries` store added
+- `UserSettings` extended: `height`, `targetWeight`, `weightUnit`, `goalDate`
+- `__APP_VERSION__` injected via Vite `define`; Settings footer shows live version
+- BMI bar rebuilt in HTML/CSS (fixed-size text, correct zone stop percentages)
+- Weight chart uses ResizeObserver for true responsive pixel coordinates
+- Navigation extended to 5 tabs: Today · Snap · Body · History · Settings
