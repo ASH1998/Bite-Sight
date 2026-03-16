@@ -30,4 +30,15 @@ export interface DaySummary {
 export interface UserSettings {
   dailyCalorieGoal: number
   geminiApiKey: string
+  height?: number        // cm
+  targetWeight?: number  // kg
+  weightUnit?: 'kg' | 'lb'
+  goalDate?: string      // YYYY-MM-DD
+}
+
+export interface WeightEntry {
+  id: string
+  weight: number   // always stored in kg
+  date: string     // YYYY-MM-DD
+  timestamp: number
 }

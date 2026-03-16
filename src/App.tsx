@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage'
 import CameraPage from './pages/CameraPage'
 import HistoryPage from './pages/HistoryPage'
 import SettingsPage from './pages/SettingsPage'
+import BodyPage from './pages/BodyPage'
 
 export default function App() {
   const [tab, setTab] = useState<TabId>('home')
@@ -19,6 +20,7 @@ export default function App() {
       <div className="flex-1 min-h-0 overflow-y-auto no-scrollbar">
         {tab === 'home' && <HomePage refreshKey={refreshKey} />}
         {tab === 'camera' && <CameraPage onMealSaved={handleMealSaved} onNavigateSettings={() => setTab('settings')} />}
+        {tab === 'body' && <BodyPage onNavigateSettings={() => setTab('settings')} />}
         {tab === 'history' && <HistoryPage />}
         {tab === 'settings' && <SettingsPage />}
       </div>

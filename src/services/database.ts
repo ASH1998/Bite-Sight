@@ -1,8 +1,8 @@
 import { openDB, type IDBPDatabase } from 'idb'
-import type { Meal, UserSettings } from '../types'
+import type { Meal, UserSettings, WeightEntry } from '../types'
 
 const DB_NAME = 'bite-sight-db'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 let dbPromise: Promise<IDBPDatabase> | null = null
 
@@ -16,8 +16,11 @@ function getDb() {
           store.createIndex('date', 'date', { unique: false })
           db.createObjectStore('settings', { keyPath: 'key' })
         }
-        // Future migrations go here:
-        // if (oldVersion < 2) { ... }
+        // v2: weight tracking
+        if (oldVersion < 2) {
+          const weightStore = db.createObjectStore('weightEntries', { keyPath: 'id' })
+          weightStore.createIndex('date', 'date', { unique: false })
+        }
       },
     })
   }
@@ -66,4 +69,21 @@ export async function getAllMeals(): Promise<Meal[]> {
 export async function clearAllData(): Promise<void> {
   const db = await getDb()
   await db.clear('meals')
+}
+
+// Weight entry CRUD
+export async function addWeightEntry(entry: WeightEntry): Promise<void> {
+  const db = await getDb()
+  await db.put('weightEntries', entry)
+}
+
+export async function getAllWeightEntries(): Promise<WeightEntry[]> {
+  const db = await getDb()
+  const entries = await db.getAll('weightEntries')
+  return entries.sort((a, b) => a.timestamp - b.timestamp)
+}
+
+export async function deleteWeightEntry(id: string): Promise<void> {
+  const db = await getDb()
+  await db.delete('weightEntries', id)
 }
