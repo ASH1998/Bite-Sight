@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.3.1 (2026-03-22)
+
+### Added
+- **Indian food awareness** — Gemini prompt now specializes in Indian cuisine (dal, roti, biryani, dosa, paratha, thali, etc.) with accurate calorie estimates for Indian cooking methods (ghee, oil, coconut) and portion sizes
+- **Data export/import** — Export all meals, weight entries, and settings as a JSON backup file; import merges data without overwriting existing entries, enabling safe migration across app updates or devices
+- **PWA manifest enhancements** — properly sized icons (192x192, 512x512), wide + narrow screenshots for install prompt, categories, language/direction, stable manifest ID, fullscreen display mode
+
+### Fixed
+- **Untracked days no longer show as zero** — daily bar charts skip days with no logged meals; weekly/monthly aggregations average only from tracked days so gaps don't drag down values
+- **PWA icon size mismatch** — manifest previously declared 192x192 but served 2048x2048; now uses correctly resized icon files
+
+### Changed
+- PWA display mode changed from `standalone` to `fullscreen` with `standalone` fallback
+
 ## v1.3.0 (2026-03-16)
 
 ### Added

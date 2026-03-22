@@ -6,7 +6,7 @@ BiteSight is a Progressive Web App (PWA) calorie tracker that uses AI to analyze
 
 ## Core Features
 
-- **AI Food Analysis** - Uses Google Gemini API (gemini-3-flash-preview) to analyze food photos (camera or uploaded) with optional text descriptions
+- **AI Food Analysis** - Uses Google Gemini API (gemini-3-flash-preview) to analyze food photos (camera or uploaded) with optional text descriptions; prompt tuned for Indian cuisine accuracy
 - **Daily Tracking** - Circular progress ring showing calories consumed vs daily goal
 - **Detailed Nutrition** - Tracks calories, protein, carbs, fat, fiber, sugar, sodium, and serving sizes
 - **Meal History** - Browse past meals with expandable day view, daily summaries, and date range filtering
@@ -15,6 +15,7 @@ BiteSight is a Progressive Web App (PWA) calorie tracker that uses AI to analyze
 - **Body & BMI Tracker** - Log daily weight (kg/lb), view BMI on a color-coded zone bar, track progress toward a goal weight with a line chart and recommendations
 - **Daily Calorie Plan** - Set a target date; app calculates kcal/day needed with Moderate/Fast pace presets and safety warnings
 - **PWA Support** - Installable on Android with offline support via service workers
+- **Data Export/Import** - Backup all data (meals, weight, settings) as JSON; import merges without overwriting
 - **Local Storage** - All meal data stored locally in IndexedDB for privacy and offline access
 
 ## Tech Stack
@@ -80,7 +81,7 @@ src/
 - **Minimalist UI** - Clean, simple interface focused on quick meal logging
 - **Green color theme** - All charts, stats, and accents use a green palette (green-500 to green-700)
 - **Pure SVG/HTML charts** - No charting library; all graphs are hand-drawn SVG or CSS for zero extra dependencies
-- **Single logo file** - `public/logo.png` used for all icon sizes (favicon, apple-touch-icon, PWA manifest)
+- **Sized PWA icons** - `public/logo-192.png` and `public/logo-512.png` for manifest; original `logo.png` kept for favicon/apple-touch-icon
 - **Responsive charts via ResizeObserver** - Weight history chart measures its container in JS and recalculates SVG coordinates; text stays fixed-size. BMI zone bar uses HTML/CSS divs (not SVG) so font size never scales with the container
 - **TDEE approximation** - Body tab estimates maintenance calories as `weight_kg × 33` (light activity). No age/sex required
 
@@ -89,7 +90,7 @@ src/
 The history page (`src/pages/HistoryPage.tsx`) is the most complex screen:
 
 - **Date range selector** - Pill buttons: 1W, 2W, 1M, 3M, 6M, 1Y, All
-- **Smart bar aggregation** - Daily bars for short ranges (≤1M), weekly buckets for 3M/6M, monthly buckets for 1Y/All
+- **Smart bar aggregation** - Daily bars for short ranges (≤1M), weekly buckets for 3M/6M, monthly buckets for 1Y/All; untracked days are excluded (not shown as zero)
 - **Calorie bar chart** - Green bars with red for over-goal days, dashed goal line
 - **Period averages** - Computed from days-with-data in selected range
 - **Macro donut** - SVG donut chart with green-tone segments (protein/carbs/fat)
@@ -137,13 +138,10 @@ Vite only serves files from `public/` to the production `dist/` build. The `stat
 - Work on feature branches; push branch, open PR to merge into `main`
 - `__APP_VERSION__` is read from `package.json` at build time via `vite.config.ts` and displayed in the Settings footer
 
-## Recent Changes (v1.3.0)
+## Recent Changes (v1.3.1)
 
-- Added Body & BMI tab with weight logging, BMI zone bar, goal progress, history chart, and recommendations
-- Added Daily Calorie Plan to Settings (TDEE estimate, pace presets, target-date calculator)
-- IndexedDB bumped to v2 — `weightEntries` store added
-- `UserSettings` extended: `height`, `targetWeight`, `weightUnit`, `goalDate`
-- `__APP_VERSION__` injected via Vite `define`; Settings footer shows live version
-- BMI bar rebuilt in HTML/CSS (fixed-size text, correct zone stop percentages)
-- Weight chart uses ResizeObserver for true responsive pixel coordinates
-- Navigation extended to 5 tabs: Today · Snap · Body · History · Settings
+- Gemini prompt tuned for Indian food — recognizes common dishes, accounts for ghee/oil/coconut and Indian portion sizes
+- Data export/import in Settings — JSON backup with merge-on-import (no duplicate overwrites)
+- Untracked days excluded from history charts; weekly/monthly bars average only tracked days
+- PWA manifest: correctly sized icons (192/512), screenshots, categories, fullscreen display, stable `id`
+- Version bumped to 1.3.1
