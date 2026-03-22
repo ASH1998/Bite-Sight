@@ -87,3 +87,53 @@ export async function deleteWeightEntry(id: string): Promise<void> {
   const db = await getDb()
   await db.delete('weightEntries', id)
 }
+
+// Export all data as JSON
+export async function exportAllData(): Promise<string> {
+  const [meals, settings, weightEntries] = await Promise.all([
+    getAllMeals(),
+    getSettings(),
+    getAllWeightEntries(),
+  ])
+  return JSON.stringify({ version: DB_VERSION, exportedAt: new Date().toISOString(), meals, settings, weightEntries }, null, 2)
+}
+
+// Import data from JSON — merges with existing data (skips duplicate IDs)
+export async function importData(json: string): Promise<{ meals: number; weightEntries: number }> {
+  const data = JSON.parse(json)
+  if (!data || typeof data !== 'object') throw new Error('Invalid data format')
+
+  const db = await getDb()
+  let mealsImported = 0
+  let weightImported = 0
+
+  if (Array.isArray(data.meals)) {
+    for (const meal of data.meals) {
+      if (meal.id && meal.date && meal.nutrition) {
+        const existing = await db.get('meals', meal.id)
+        if (!existing) {
+          await db.put('meals', meal)
+          mealsImported++
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(data.weightEntries)) {
+    for (const entry of data.weightEntries) {
+      if (entry.id && entry.date && typeof entry.weight === 'number') {
+        const existing = await db.get('weightEntries', entry.id)
+        if (!existing) {
+          await db.put('weightEntries', entry)
+          weightImported++
+        }
+      }
+    }
+  }
+
+  if (data.settings && typeof data.settings === 'object') {
+    await saveSettings(data.settings)
+  }
+
+  return { meals: mealsImported, weightEntries: weightImported }
+}

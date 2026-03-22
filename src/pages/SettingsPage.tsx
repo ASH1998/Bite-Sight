@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { getSettings, saveSettings, clearAllData, getAllWeightEntries } from '../services/database'
+import { getSettings, saveSettings, clearAllData, getAllWeightEntries, exportAllData, importData } from '../services/database'
 import { todayDateString } from '../utils/helpers'
 import Header from '../components/Header'
 
@@ -17,6 +17,7 @@ export default function SettingsPage() {
   const [weightUnit, setWeightUnit] = useState<'kg' | 'lb'>('kg')
   const [goalDate, setGoalDate] = useState('')
   const [latestWeightKg, setLatestWeightKg] = useState<number | null>(null)
+  const [importStatus, setImportStatus] = useState<string | null>(null)
 
   useEffect(() => {
     Promise.all([getSettings(), getAllWeightEntries()]).then(([s, entries]) => {
@@ -57,6 +58,40 @@ export default function SettingsPage() {
       await clearAllData()
       alert('All data cleared.')
     }
+  }
+
+  const handleExport = async () => {
+    const json = await exportAllData()
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `bitesight-backup-${new Date().toISOString().split('T')[0]}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const text = await file.text()
+      const result = await importData(text)
+      setImportStatus(`Imported ${result.meals} meals, ${result.weightEntries} weight entries.`)
+      // Reload settings in case they were imported
+      const s = await getSettings()
+      setGoal(s.dailyCalorieGoal)
+      setApiKey(s.geminiApiKey || '')
+      setWeightUnit(s.weightUnit ?? 'kg')
+      if (s.height) setHeight(String(s.height))
+      if (s.targetWeight) setTargetWeight(String(s.targetWeight))
+      if (s.goalDate) setGoalDate(s.goalDate)
+      setTimeout(() => setImportStatus(null), 4000)
+    } catch {
+      setImportStatus('Import failed — invalid file format.')
+      setTimeout(() => setImportStatus(null), 4000)
+    }
+    e.target.value = ''
   }
 
   // Calorie plan — recomputes live as user edits target weight / goal date
@@ -274,13 +309,28 @@ export default function SettingsPage() {
 
         {/* Data */}
         <div className="bg-card rounded-2xl shadow-sm border border-gray-100 p-4">
-          <h3 className="text-sm font-medium text-gray-900 mb-2">Data</h3>
-          <button
-            onClick={handleClear}
-            className="w-full py-2.5 rounded-xl font-semibold text-sm border border-red-300 text-red-500 active:bg-red-50 transition-colors"
-          >
-            Clear All History
-          </button>
+          <h3 className="text-sm font-medium text-gray-900 mb-3">Data</h3>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={handleExport}
+              className="w-full py-2.5 rounded-xl font-semibold text-sm border border-green-300 text-green-600 active:bg-green-50 transition-colors"
+            >
+              Export All Data
+            </button>
+            <label className="w-full py-2.5 rounded-xl font-semibold text-sm border border-blue-300 text-blue-600 active:bg-blue-50 transition-colors text-center cursor-pointer">
+              Import Data
+              <input type="file" accept=".json" onChange={handleImport} className="hidden" />
+            </label>
+            {importStatus && (
+              <p className="text-xs text-center text-gray-600 bg-gray-50 rounded-lg py-2">{importStatus}</p>
+            )}
+            <button
+              onClick={handleClear}
+              className="w-full py-2.5 rounded-xl font-semibold text-sm border border-red-300 text-red-500 active:bg-red-50 transition-colors"
+            >
+              Clear All History
+            </button>
+          </div>
         </div>
 
         <div className="text-center text-xs text-gray-400 mt-4">
