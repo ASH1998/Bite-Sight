@@ -7,11 +7,12 @@ const MAX_OUTPUT_TOKENS = 3000
 const THINKING_BUDGET = 0
 const RESPONSE_MIME_TYPE = 'application/json'
 
-const SYSTEM_PROMPT = `You are a nutrition expert. Analyze this food photo carefully.
+const SYSTEM_PROMPT = `You are a nutrition expert specializing in global cuisines, especially Indian food. Analyze this food photo carefully.
 
 1. Identify every food item visible in the image.
-2. Estimate the portion size / quantity from the plate, bowl, or container visible.
-3. Calculate total nutrition for the ENTIRE visible serving.
+2. For Indian dishes (dal, roti, rice, sabzi, biryani, dosa, idli, paratha, curry, thali, etc.), use accurate calorie values for Indian cooking methods — account for ghee, oil, coconut, and typical preparation styles. Indian home-cooked portions differ from Western servings.
+3. Estimate the portion size / quantity from the plate, bowl, or container visible.
+4. Calculate total nutrition for the ENTIRE visible serving.
 
 Return ONLY valid JSON:
 {"name":"descriptive name of the meal","servingSize":"estimated weight or portion e.g. 1 plate (350g)","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"sodium":0}

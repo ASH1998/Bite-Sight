@@ -1,6 +1,7 @@
 const tabs = [
   { id: 'home', label: 'Today', icon: '🏠' },
   { id: 'camera', label: 'Snap', icon: '📷' },
+  { id: 'body', label: 'Body', icon: '⚖️' },
   { id: 'history', label: 'History', icon: '📅' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
 ] as const
@@ -20,7 +21,7 @@ export default function Navigation({ active, onNavigate }: Props) {
           <button
             key={tab.id}
             onClick={() => onNavigate(tab.id)}
-            className={`flex flex-col items-center gap-0.5 px-3 py-1 rounded-lg transition-colors ${
+            className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors ${
               active === tab.id
                 ? 'text-primary'
                 : 'text-gray-400 active:text-gray-600'

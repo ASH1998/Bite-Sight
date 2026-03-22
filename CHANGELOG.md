@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.3.1 (2026-03-22)
+
+### Added
+- **Indian food awareness** — Gemini prompt now specializes in Indian cuisine (dal, roti, biryani, dosa, paratha, thali, etc.) with accurate calorie estimates for Indian cooking methods (ghee, oil, coconut) and portion sizes
+- **Data export/import** — Export all meals, weight entries, and settings as a JSON backup file; import merges data without overwriting existing entries, enabling safe migration across app updates or devices
+- **PWA manifest enhancements** — properly sized icons (192x192, 512x512), wide + narrow screenshots for install prompt, categories, language/direction, stable manifest ID, fullscreen display mode
+
+### Fixed
+- **Untracked days no longer show as zero** — daily bar charts skip days with no logged meals; weekly/monthly aggregations average only from tracked days so gaps don't drag down values
+- **PWA icon size mismatch** — manifest previously declared 192x192 but served 2048x2048; now uses correctly resized icon files
+
+### Changed
+- PWA display mode changed from `standalone` to `fullscreen` with `standalone` fallback
+
+## v1.3.0 (2026-03-16)
+
+### Added
+- **Body & BMI tab** — new ⚖️ tab for body composition tracking
+- Weight logging with kg/lb toggle; logs one entry per day (re-logging today replaces the previous entry)
+- BMI card with live calculation, color-coded category badge (Underweight / Normal / Overweight / Obese), and a gradient zone bar with correct boundary stops at 18.5 / 25 / 30
+- Target BMI marker on the zone bar when a goal weight is set
+- Weight goal progress bar showing % of the way from starting weight to target
+- Weight history line chart with 1W / 1M / 3M / All range selector; uses ResizeObserver so it fills the container at any screen width
+- Dashed goal-weight line on the history chart
+- Recent weight entries list with per-entry delete
+- Smart recommendations card — BMI-based tips, 7-day average calorie context, estimated weeks to goal, and recent weight trend
+- **Daily Calorie Plan** in Settings — shows estimated TDEE, recommended kcal/day for Moderate (0.5 kg/wk) and Fast (1 kg/wk) paces with weeks-to-goal, plus a custom target-date picker that calculates the exact daily intake needed; warns if the pace is unsafe (>1 kg/wk deficit or <1 200 kcal/day)
+
+### Changed
+- Settings page now includes height, target weight, weight unit, goal date, and calorie plan alongside existing controls
+- IndexedDB migrated to v2 — new `weightEntries` store added via versioned upgrade handler (existing meal data unaffected)
+- `UserSettings` type extended with `height`, `targetWeight`, `weightUnit`, `goalDate`
+- Navigation bar now has 5 tabs: Today · Snap · Body · History · Settings
+
 ## v1.2.0 (2026-03-04)
 
 ### Added

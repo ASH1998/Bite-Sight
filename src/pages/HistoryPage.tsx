@@ -103,23 +103,25 @@ export default function HistoryPage() {
   const chartBars: BarData[] = useMemo(() => {
     if (rangeDayData.length === 0) return []
 
-    // Daily bars for short ranges
+    // Daily bars for short ranges — skip untracked days
     if (rangeDays <= 31) {
-      return rangeDayData.map((d) => ({
-        label: barLabel(d.date, range),
-        calories: d.calories,
-        protein: d.protein,
-        carbs: d.carbs,
-        fat: d.fat,
-      }))
+      return rangeDayData
+        .filter((d) => d.calories > 0)
+        .map((d) => ({
+          label: barLabel(d.date, range),
+          calories: d.calories,
+          protein: d.protein,
+          carbs: d.carbs,
+          fat: d.fat,
+        }))
     }
 
-    // Weekly aggregation for 3M/6M
+    // Weekly aggregation for 3M/6M — only average from tracked days
     if (rangeDays <= 180) {
       return aggregateByWeek(rangeDayData)
     }
 
-    // Monthly aggregation for 1Y/ALL
+    // Monthly aggregation for 1Y/ALL — only average from tracked days
     return aggregateByMonth(rangeDayData)
   }, [rangeDayData, rangeDays, range])
 
@@ -345,12 +347,14 @@ function aggregateByWeek(days: DayData[]): BarData[] {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([weekStart, days]) => {
       const d = new Date(weekStart + 'T12:00:00')
+      const tracked = days.filter((d) => d.calories > 0)
+      const n = tracked.length || 1
       return {
         label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        calories: days.reduce((s, d) => s + d.calories, 0),
-        protein: days.reduce((s, d) => s + d.protein, 0),
-        carbs: days.reduce((s, d) => s + d.carbs, 0),
-        fat: days.reduce((s, d) => s + d.fat, 0),
+        calories: Math.round(tracked.reduce((s, d) => s + d.calories, 0) / n),
+        protein: Math.round(tracked.reduce((s, d) => s + d.protein, 0) / n),
+        carbs: Math.round(tracked.reduce((s, d) => s + d.carbs, 0) / n),
+        fat: Math.round(tracked.reduce((s, d) => s + d.fat, 0) / n),
       }
     })
 }
@@ -368,12 +372,14 @@ function aggregateByMonth(days: DayData[]): BarData[] {
     .map(([monthKey, days]) => {
       const [y, m] = monthKey.split('-')
       const d = new Date(Number(y), Number(m) - 1, 1)
+      const tracked = days.filter((d) => d.calories > 0)
+      const n = tracked.length || 1
       return {
         label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
-        calories: days.reduce((s, d) => s + d.calories, 0),
-        protein: days.reduce((s, d) => s + d.protein, 0),
-        carbs: days.reduce((s, d) => s + d.carbs, 0),
-        fat: days.reduce((s, d) => s + d.fat, 0),
+        calories: Math.round(tracked.reduce((s, d) => s + d.calories, 0) / n),
+        protein: Math.round(tracked.reduce((s, d) => s + d.protein, 0) / n),
+        carbs: Math.round(tracked.reduce((s, d) => s + d.carbs, 0) / n),
+        fat: Math.round(tracked.reduce((s, d) => s + d.fat, 0) / n),
       }
     })
 }

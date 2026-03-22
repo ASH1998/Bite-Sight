@@ -1,8 +1,8 @@
 import { openDB, type IDBPDatabase } from 'idb'
-import type { Meal, UserSettings } from '../types'
+import type { Meal, UserSettings, WeightEntry } from '../types'
 
 const DB_NAME = 'bite-sight-db'
-const DB_VERSION = 1
+const DB_VERSION = 2
 
 let dbPromise: Promise<IDBPDatabase> | null = null
 
@@ -16,8 +16,11 @@ function getDb() {
           store.createIndex('date', 'date', { unique: false })
           db.createObjectStore('settings', { keyPath: 'key' })
         }
-        // Future migrations go here:
-        // if (oldVersion < 2) { ... }
+        // v2: weight tracking
+        if (oldVersion < 2) {
+          const weightStore = db.createObjectStore('weightEntries', { keyPath: 'id' })
+          weightStore.createIndex('date', 'date', { unique: false })
+        }
       },
     })
   }
@@ -66,4 +69,71 @@ export async function getAllMeals(): Promise<Meal[]> {
 export async function clearAllData(): Promise<void> {
   const db = await getDb()
   await db.clear('meals')
+}
+
+// Weight entry CRUD
+export async function addWeightEntry(entry: WeightEntry): Promise<void> {
+  const db = await getDb()
+  await db.put('weightEntries', entry)
+}
+
+export async function getAllWeightEntries(): Promise<WeightEntry[]> {
+  const db = await getDb()
+  const entries = await db.getAll('weightEntries')
+  return entries.sort((a, b) => a.timestamp - b.timestamp)
+}
+
+export async function deleteWeightEntry(id: string): Promise<void> {
+  const db = await getDb()
+  await db.delete('weightEntries', id)
+}
+
+// Export all data as JSON
+export async function exportAllData(): Promise<string> {
+  const [meals, settings, weightEntries] = await Promise.all([
+    getAllMeals(),
+    getSettings(),
+    getAllWeightEntries(),
+  ])
+  return JSON.stringify({ version: DB_VERSION, exportedAt: new Date().toISOString(), meals, settings, weightEntries }, null, 2)
+}
+
+// Import data from JSON — merges with existing data (skips duplicate IDs)
+export async function importData(json: string): Promise<{ meals: number; weightEntries: number }> {
+  const data = JSON.parse(json)
+  if (!data || typeof data !== 'object') throw new Error('Invalid data format')
+
+  const db = await getDb()
+  let mealsImported = 0
+  let weightImported = 0
+
+  if (Array.isArray(data.meals)) {
+    for (const meal of data.meals) {
+      if (meal.id && meal.date && meal.nutrition) {
+        const existing = await db.get('meals', meal.id)
+        if (!existing) {
+          await db.put('meals', meal)
+          mealsImported++
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(data.weightEntries)) {
+    for (const entry of data.weightEntries) {
+      if (entry.id && entry.date && typeof entry.weight === 'number') {
+        const existing = await db.get('weightEntries', entry.id)
+        if (!existing) {
+          await db.put('weightEntries', entry)
+          weightImported++
+        }
+      }
+    }
+  }
+
+  if (data.settings && typeof data.settings === 'object') {
+    await saveSettings(data.settings)
+  }
+
+  return { meals: mealsImported, weightEntries: weightImported }
 }
