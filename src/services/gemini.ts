@@ -3,20 +3,48 @@ import type { NutritionInfo } from '../types'
 // --- Configuration ---
 const MODEL = 'gemini-3-flash-preview'
 const TEMPERATURE = 0
-const MAX_OUTPUT_TOKENS = 3000
-const THINKING_BUDGET = 0
+const MAX_OUTPUT_TOKENS = 4000
+// Allow the model to reason internally before producing the final answer.
+// A budget of 1024 tokens is enough for detailed food analysis without
+// excessive latency or cost.
+const THINKING_BUDGET = 1024
 const RESPONSE_MIME_TYPE = 'application/json'
 
-const SYSTEM_PROMPT = `You are a nutrition expert. Analyze this food photo carefully.
+// Threshold for auto-correcting calories from macros (15 % discrepancy).
+// Calories ≈ protein×4 + carbs×4 + fat×9 (Atwater factors).
+const CALORIE_CORRECTION_THRESHOLD = 0.15
 
-1. Identify every food item visible in the image.
-2. Estimate the portion size / quantity from the plate, bowl, or container visible.
-3. Calculate total nutrition for the ENTIRE visible serving.
+const SYSTEM_PROMPT = `You are a certified nutritionist and dietitian with expertise in food analysis. Accurately calculate the nutritional content of the food shown in this photo.
 
-Return ONLY valid JSON:
-{"name":"descriptive name of the meal","servingSize":"estimated weight or portion e.g. 1 plate (350g)","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"sodium":0}
+Follow these steps:
 
-All macros in grams, sodium in mg. Be precise about portion sizes.`
+Step 1 – Identify every food item:
+List every distinct ingredient or component visible, including sauces, dressings, toppings, garnishes, and cooking fats (oil, butter).
+
+Step 2 – Estimate portion weights:
+Use visible context clues as rulers:
+- Standard dinner plate diameter ≈ 26 cm
+- Fork length ≈ 19 cm | tablespoon ≈ 15 ml | cup ≈ 240 ml
+State the estimated weight (grams) for each item.
+
+Step 3 – Look up nutritional values:
+For each item use USDA FoodData Central values (per 100 g). Account for cooking:
+- Pan-frying / deep-frying adds ≈ 8–12 g of absorbed oil per 100 g of food
+- Stir-frying adds ≈ 3–5 g oil per 100 g
+- Visible sauces / dressings: salad dressing ≈ 60–80 kcal/tbsp, mayo ≈ 90 kcal/tbsp, ketchup ≈ 15 kcal/tbsp
+
+Step 4 – Calculate totals:
+Multiply each item's per-100 g values by its estimated weight, then sum across all items.
+
+Step 5 – Verify calorie consistency:
+Your reported calories MUST satisfy: calories ≈ (protein × 4) + (carbs × 4) + (fat × 9) within ±10 %.
+Adjust reported calories if needed so this relationship holds.
+
+Return ONLY valid JSON with this exact structure:
+{"name":"descriptive name of the meal","servingSize":"estimated total weight e.g. ~350g","calories":0,"protein":0,"carbs":0,"fat":0,"fiber":0,"sugar":0,"sodium":0,"confidence":"high|medium|low","notes":"brief assumptions about hidden fats, cooking method, or ambiguous portions"}
+
+All macros in grams, sodium in mg.
+Confidence: "high" = food clearly identifiable and portion obvious; "medium" = some estimation required; "low" = unclear image or highly ambiguous dish.`
 
 // --- Types ---
 interface GeminiResult {
@@ -87,17 +115,35 @@ export async function analyzeFood(apiKey: string, imageBase64: string): Promise<
 
   const parsed = JSON.parse(text)
 
+  const protein = Math.round(parsed.protein || 0)
+  const carbs = Math.round(parsed.carbs || 0)
+  const fat = Math.round(parsed.fat || 0)
+
+  // Cross-validate reported calories against Atwater factors.
+  // If the discrepancy is larger than the threshold, replace with the
+  // macro-derived value so the displayed number is always self-consistent.
+  const macroCalories = protein * 4 + carbs * 4 + fat * 9
+  const reportedCalories = Math.round(parsed.calories || 0)
+  const discrepancy =
+    reportedCalories > 0
+      ? Math.abs(macroCalories - reportedCalories) / reportedCalories
+      : 1
+  const calories =
+    discrepancy > CALORIE_CORRECTION_THRESHOLD ? macroCalories : reportedCalories
+
   return {
     name: parsed.name || 'Unknown food',
     nutrition: {
-      calories: Math.round(parsed.calories || 0),
-      protein: Math.round(parsed.protein || 0),
-      carbs: Math.round(parsed.carbs || 0),
-      fat: Math.round(parsed.fat || 0),
+      calories,
+      protein,
+      carbs,
+      fat,
       fiber: Math.round(parsed.fiber || 0),
       sugar: Math.round(parsed.sugar || 0),
       sodium: Math.round(parsed.sodium || 0),
       servingSize: parsed.servingSize || 'Unknown',
+      confidence: parsed.confidence ?? undefined,
+      notes: parsed.notes ?? undefined,
     },
   }
 }
