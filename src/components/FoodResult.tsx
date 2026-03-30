@@ -6,9 +6,18 @@ interface Props {
   imageData: string
   onSave: () => void
   onRetake: () => void
+  onRefine?: () => void
 }
 
-export default function FoodResult({ name, nutrition, imageData, onSave, onRetake }: Props) {
+const CONFIDENCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
+  high: { bg: 'bg-green-100', text: 'text-green-700', label: '✓ High confidence' },
+  medium: { bg: 'bg-yellow-100', text: 'text-yellow-700', label: '~ Medium confidence' },
+  low: { bg: 'bg-red-100', text: 'text-red-700', label: '⚠ Low confidence — review values' },
+}
+
+export default function FoodResult({ name, nutrition, imageData, onSave, onRetake, onRefine }: Props) {
+  const confidenceStyle = nutrition.confidence ? CONFIDENCE_STYLES[nutrition.confidence] : null
+
   return (
     <div className="flex flex-col h-full bg-surface overflow-y-auto no-scrollbar">
       {/* Food image */}
@@ -48,6 +57,22 @@ export default function FoodResult({ name, nutrition, imageData, onSave, onRetak
           </div>
         </div>
 
+        {/* Confidence & notes from AI */}
+        {(confidenceStyle || nutrition.notes) && (
+          <div className="bg-card rounded-2xl shadow-sm p-4 border border-gray-100 flex flex-col gap-2">
+            {confidenceStyle && (
+              <span
+                className={`self-start text-xs font-semibold px-2 py-0.5 rounded-full ${confidenceStyle.bg} ${confidenceStyle.text}`}
+              >
+                {confidenceStyle.label}
+              </span>
+            )}
+            {nutrition.notes && (
+              <p className="text-xs text-gray-500 leading-relaxed">{nutrition.notes}</p>
+            )}
+          </div>
+        )}
+
         {/* Buttons - always visible, with bottom padding for nav */}
         <div className="flex gap-3 pb-20 pt-1">
           <button
@@ -56,6 +81,14 @@ export default function FoodResult({ name, nutrition, imageData, onSave, onRetak
           >
             Retake
           </button>
+          {onRefine && (
+            <button
+              onClick={onRefine}
+              className="flex-1 py-3 rounded-2xl font-semibold text-sm border border-primary text-primary active:bg-primary/5 transition-colors"
+            >
+              Refine
+            </button>
+          )}
           <button
             onClick={onSave}
             className="flex-1 py-3 rounded-2xl font-semibold text-sm bg-primary text-white active:bg-primary-dark transition-colors"

@@ -7,6 +7,8 @@ export interface NutritionInfo {
   sugar: number
   sodium: number // mg
   servingSize: string // e.g. "1 plate (300g)"
+  confidence?: 'high' | 'medium' | 'low'
+  notes?: string
 }
 
 export interface Meal {
