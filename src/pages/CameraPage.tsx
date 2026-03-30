@@ -14,6 +14,7 @@ interface Props {
 
 type State =
   | { step: 'camera' }
+  | { step: 'preview'; imageData: string }
   | { step: 'analyzing'; imageData: string }
   | { step: 'result'; imageData: string; name: string; nutrition: NutritionInfo }
   | { step: 'error'; message: string }
@@ -21,6 +22,7 @@ type State =
 export default function CameraPage({ onMealSaved, onNavigateSettings }: Props) {
   const [state, setState] = useState<State>({ step: 'camera' })
   const [apiKey, setApiKey] = useState<string | null>(null)
+  const [ingredientHints, setIngredientHints] = useState('')
 
   useEffect(() => {
     getSettings().then((s) => setApiKey(s.geminiApiKey || ''))
@@ -56,10 +58,15 @@ export default function CameraPage({ onMealSaved, onNavigateSettings }: Props) {
     )
   }
 
-  const handleCapture = async (imageData: string) => {
+  const handleCapture = (imageData: string) => {
+    setIngredientHints('')
+    setState({ step: 'preview', imageData })
+  }
+
+  const handleAnalyze = async (imageData: string, hints: string) => {
     setState({ step: 'analyzing', imageData })
     try {
-      const result = await analyzeFood(apiKey!, imageData)
+      const result = await analyzeFood(apiKey!, imageData, hints || undefined)
       setState({ step: 'result', imageData, ...result })
     } catch (err) {
       console.error('[CameraPage] Analysis error:', err)
@@ -81,7 +88,15 @@ export default function CameraPage({ onMealSaved, onNavigateSettings }: Props) {
     setState({ step: 'camera' })
   }
 
-  const reset = () => setState({ step: 'camera' })
+  const reset = () => {
+    setIngredientHints('')
+    setState({ step: 'camera' })
+  }
+
+  const handleRefine = () => {
+    if (state.step !== 'result') return
+    setState({ step: 'preview', imageData: state.imageData })
+  }
 
   if (state.step === 'camera') {
     return (
@@ -89,6 +104,51 @@ export default function CameraPage({ onMealSaved, onNavigateSettings }: Props) {
         <Header title="Snap Food" />
         <div className="flex-1 min-h-0">
           <Camera onCapture={handleCapture} />
+        </div>
+      </div>
+    )
+  }
+
+  if (state.step === 'preview') {
+    return (
+      <div className="h-full flex flex-col">
+        <Header title="Add Details" />
+        <div className="flex-1 flex flex-col items-center gap-4 px-6 py-6 overflow-y-auto no-scrollbar">
+          <img
+            src={state.imageData}
+            alt="Captured food"
+            className="w-48 h-48 object-cover rounded-2xl shadow-lg flex-shrink-0"
+          />
+          <div className="w-full">
+            <label htmlFor="ingredient-hints" className="block text-sm font-medium text-gray-700 mb-1">
+              Know the ingredients? <span className="text-gray-400 font-normal">(optional)</span>
+            </label>
+            <textarea
+              id="ingredient-hints"
+              value={ingredientHints}
+              onChange={(e) => setIngredientHints(e.target.value)}
+              placeholder="e.g. cooked in ghee, has coconut milk, extra cheese, 2 tbsp mayo..."
+              rows={3}
+              className="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm text-gray-900 placeholder-gray-400 focus:border-primary focus:ring-1 focus:ring-primary outline-none resize-none"
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Adding ingredients, cooking method, or portion details improves accuracy.
+            </p>
+          </div>
+          <div className="flex gap-3 w-full mt-auto pb-20">
+            <button
+              onClick={reset}
+              className="flex-1 py-3 rounded-2xl font-semibold text-sm border border-gray-300 text-gray-700 active:bg-gray-100 transition-colors"
+            >
+              Retake
+            </button>
+            <button
+              onClick={() => handleAnalyze(state.imageData, ingredientHints)}
+              className="flex-1 py-3 rounded-2xl font-semibold text-sm bg-primary text-white active:bg-primary-dark transition-colors"
+            >
+              Analyze
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -133,6 +193,7 @@ export default function CameraPage({ onMealSaved, onNavigateSettings }: Props) {
       imageData={state.imageData}
       onSave={handleSave}
       onRetake={reset}
+      onRefine={handleRefine}
     />
   )
 }

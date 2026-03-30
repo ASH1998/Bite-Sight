@@ -6,6 +6,7 @@ interface Props {
   imageData: string
   onSave: () => void
   onRetake: () => void
+  onRefine?: () => void
 }
 
 const CONFIDENCE_STYLES: Record<string, { bg: string; text: string; label: string }> = {
@@ -14,7 +15,7 @@ const CONFIDENCE_STYLES: Record<string, { bg: string; text: string; label: strin
   low: { bg: 'bg-red-100', text: 'text-red-700', label: '⚠ Low confidence — review values' },
 }
 
-export default function FoodResult({ name, nutrition, imageData, onSave, onRetake }: Props) {
+export default function FoodResult({ name, nutrition, imageData, onSave, onRetake, onRefine }: Props) {
   const confidenceStyle = nutrition.confidence ? CONFIDENCE_STYLES[nutrition.confidence] : null
 
   return (
@@ -80,6 +81,14 @@ export default function FoodResult({ name, nutrition, imageData, onSave, onRetak
           >
             Retake
           </button>
+          {onRefine && (
+            <button
+              onClick={onRefine}
+              className="flex-1 py-3 rounded-2xl font-semibold text-sm border border-primary text-primary active:bg-primary/5 transition-colors"
+            >
+              Refine
+            </button>
+          )}
           <button
             onClick={onSave}
             className="flex-1 py-3 rounded-2xl font-semibold text-sm bg-primary text-white active:bg-primary-dark transition-colors"

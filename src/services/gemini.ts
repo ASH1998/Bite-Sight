@@ -53,7 +53,11 @@ interface GeminiResult {
 }
 
 // --- API ---
-export async function analyzeFood(apiKey: string, imageBase64: string): Promise<GeminiResult> {
+export async function analyzeFood(
+  apiKey: string,
+  imageBase64: string,
+  ingredientHints?: string,
+): Promise<GeminiResult> {
   if (!apiKey) {
     throw new Error('No API key configured. Please add your Gemini API key in Settings.')
   }
@@ -64,18 +68,27 @@ export async function analyzeFood(apiKey: string, imageBase64: string): Promise<
     ? imageBase64.split(',')[1]
     : imageBase64
 
+  const promptParts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> =
+    [
+      { text: SYSTEM_PROMPT },
+      {
+        inlineData: {
+          mimeType: 'image/jpeg',
+          data: base64Data,
+        },
+      },
+    ]
+
+  if (ingredientHints?.trim()) {
+    promptParts.push({
+      text: `\n\nIMPORTANT — The user has provided the following additional context about this meal. Use this information to improve accuracy:\n${ingredientHints.trim()}`,
+    })
+  }
+
   const body = {
     contents: [
       {
-        parts: [
-          { text: SYSTEM_PROMPT },
-          {
-            inlineData: {
-              mimeType: 'image/jpeg',
-              data: base64Data,
-            },
-          },
-        ],
+        parts: promptParts,
       },
     ],
     generationConfig: {
