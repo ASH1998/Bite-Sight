@@ -1,5 +1,19 @@
 # Changelog
 
+## v1.4.0 (2026-04-15)
+
+### Added
+- **Indian Food Nutrition Database** — 1,014-entry CSV (per 100g) bundled into app; fuzzy-matches detected food items against DB for accurate, reference-backed nutrition values
+- **Hybrid AI + DB calorie pipeline** — Gemini identifies items and estimates weights, then each item is matched against the food DB; matched items use scaled DB values, unmatched items keep AI estimates
+- **LLM match verification** — second lightweight Gemini call verifies fuzzy matches are correct; rejects false positives (e.g. "Steamed Rice" no longer matches "Caramel custard (steamed)")
+- **Per-item breakdown in results** — meal results now show individual food items with calories, weight, macros, and source badge (green = food DB, blue = AI estimate)
+- **Masala-aware calorie estimation** — prompt instructs Gemini to assess gravy richness, tadka/tempering oil, cooking fat absorption, and coconut-based curry density
+- **User weight overrides** — text description can include item weights (e.g. "rice 200g, dal 150g") which override visual estimates
+
+### Changed
+- Camera capture and uploaded photos now capped at 1024px longest side with JPEG 0.7 quality — reduces payload ~10x for faster Gemini processing
+- Gemini prompt returns per-item breakdown instead of single aggregate nutrition
+
 ## v1.3.1 (2026-03-22)
 
 ### Added
