@@ -5,7 +5,7 @@ import Header from '../components/Header'
 import { analyzeFood } from '../services/gemini'
 import { addMeal, getSettings } from '../services/database'
 import { todayDateString, generateId } from '../utils/helpers'
-import type { NutritionInfo } from '../types'
+import type { NutritionInfo, FoodItem } from '../types'
 
 interface Props {
   onMealSaved: () => void
@@ -15,7 +15,7 @@ interface Props {
 type State =
   | { step: 'camera' }
   | { step: 'analyzing'; imageData: string; description?: string }
-  | { step: 'result'; imageData: string; name: string; nutrition: NutritionInfo }
+  | { step: 'result'; imageData: string; name: string; nutrition: NutritionInfo; items: FoodItem[] }
   | { step: 'error'; message: string }
 
 export default function CameraPage({ onMealSaved, onNavigateSettings }: Props) {
@@ -130,6 +130,7 @@ export default function CameraPage({ onMealSaved, onNavigateSettings }: Props) {
     <FoodResult
       name={state.name}
       nutrition={state.nutrition}
+      items={state.items}
       imageData={state.imageData}
       onSave={handleSave}
       onRetake={reset}

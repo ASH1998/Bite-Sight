@@ -56,11 +56,21 @@ export default function Camera({ onCapture }: Props) {
     const video = videoRef.current
     if (!video) return
 
+    // Cap at 1024px on longest side — enough for food recognition, much smaller payload
+    const { videoWidth: vw, videoHeight: vh } = video
+    const MAX = 1024
+    let w = vw, h = vh
+    if (w > MAX || h > MAX) {
+      const scale = MAX / Math.max(w, h)
+      w = Math.round(w * scale)
+      h = Math.round(h * scale)
+    }
+
     const canvas = document.createElement('canvas')
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    canvas.width = w
+    canvas.height = h
     const ctx = canvas.getContext('2d')!
-    ctx.drawImage(video, 0, 0)
+    ctx.drawImage(video, 0, 0, w, h)
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
     stopStream()
@@ -75,13 +85,26 @@ export default function Camera({ onCapture }: Props) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-    reader.onload = () => {
-      const dataUrl = reader.result as string
+    const img = new Image()
+    img.onload = () => {
+      // Resize uploaded images same as camera captures
+      const MAX = 1024
+      let w = img.width, h = img.height
+      if (w > MAX || h > MAX) {
+        const scale = MAX / Math.max(w, h)
+        w = Math.round(w * scale)
+        h = Math.round(h * scale)
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, w, h)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
       stopStream()
       onCapture(dataUrl, description || undefined)
     }
-    reader.readAsDataURL(file)
+    img.src = URL.createObjectURL(file)
   }
 
   const retry = () => {

@@ -9,6 +9,21 @@ export interface NutritionInfo {
   servingSize: string // e.g. "1 plate (300g)"
 }
 
+/** Individual food item identified in a meal */
+export interface FoodItem {
+  name: string
+  weightG: number
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  fiber: number
+  sugar: number
+  sodium: number
+  source: 'db' | 'ai'  // 'db' = matched from Indian Food DB, 'ai' = LLM estimate
+  dbMatch?: string      // name of matched DB entry (when source='db')
+}
+
 export interface Meal {
   id: string
   name: string
